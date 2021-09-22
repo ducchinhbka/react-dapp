@@ -2,12 +2,18 @@ import './App.css';
 import { useState } from 'react';
 import {ethers} from 'ethers';
 import Greeter from './artifacts/contracts/Greeter.sol/Greeter.json';
+import Token from './artifacts/contracts/Token.sol/Token.json';
+
 
 //// Update with the contract address logged out to the CLI when it was deployed
-const greeterAddress = "0x3d27a7dd054cB6CdbA7d540F0Ddaa6F77A15EeBE";
+const greeterAddress = "0xD1bf919807FdD5893C6d3e368Cef09A5b102A37e";
+const tokenAddress = "0xF2076a40E6177918f9BBEc6C0bf6002afA72EB52";
 function App() {
   // store greeting in local state
   const [greeting, setGreetingValue] = useState();
+  const [userAccount, setUserAccount] = useState();
+  const [amount, setAmount] = useState();
+
 
   // request access to the user's MetaMask account
   async function requestAccount() {
@@ -28,6 +34,16 @@ function App() {
     }
   }
 
+  async function getBalance() {
+    if (typeof window.ethereum !== 'undefined') {
+      const [account] = await window.ethereum.request({method: 'eth_requestAccounts'});
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const contract = new ethers.Contract(tokenAddress, Token.abi, provider);
+      const balance = await contract.balanceOf(account);
+      console.log("Balance: ", balance.toString());
+    }
+  }
+
   // call the smart contract, send an update
   async function setGreeting() {
     if (!greeting) return;
@@ -42,12 +58,30 @@ function App() {
     }
   }
 
+  async function sendCoins() {
+    if (typeof window.ethereum !== 'undefined') {
+      await requestAccount();
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(tokenAddress, Token.abi, signer);
+      const transaction = await contract.transfer(userAccount, amount);
+      await transaction.wait();
+      console.log(`${amount} Coins successfully sent to ${userAccount}`);
+    }
+  }
+  
+
   return (
     <div className="App">
       <header className="App-header">
         <button onClick={fetchGreeting}>Fetch Greeting</button>
         <button onClick={setGreeting}>Set Greeting</button>
         <input onChange={e => setGreetingValue(e.target.value)} placeholder="Set greeting"/>
+        <br/>
+        <button onClick={getBalance}>Get Balance</button>
+        <button onClick={sendCoins}>Send Coins</button>
+        <input onChange={e => setUserAccount(e.target.value)} placeholder="Account ID"/>
+        <input onChange={e => setAmount(e.target.value)} placeholder="Amount"/>
       </header>
     </div>
   )
